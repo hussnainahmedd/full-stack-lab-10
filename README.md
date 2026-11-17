@@ -1,132 +1,70 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Lab 10 — PostgreSQL and TypeORM with NestJS
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS API backed by a real PostgreSQL database through TypeORM.
+Users have a one-to-one Profile and write Notes; notes have Tags
+(many-to-many) and, from Task 2 on, an optional Category (many-to-one).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Setup
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+1. Install and start PostgreSQL, then create the database:
+   `CREATE DATABASE lab10_db;`
+2. Copy `.env.example` to `.env` and fill in your own credentials
+   (this project was developed against PostgreSQL on port 5433).
+3. Install and run:
 
 ```bash
-$ npm install
+npm install
+npm run start:dev
 ```
 
-## Compile and run the project
+The API listens on http://localhost:3000. TypeORM `synchronize: true`
+creates/updates the tables from the entities on startup (development only).
 
-```bash
-# development
-$ npm run start
+## Endpoints
 
-# watch mode
-$ npm run start:dev
+| Area       | Routes                                                                 |
+| ---------- | ---------------------------------------------------------------------- |
+| Users      | POST/GET /users, GET/PATCH/DELETE /users/:id, GET /users/:id/stats     |
+| Notes      | POST/GET /notes (page, limit, search, tag, categoryId), GET/PATCH/DELETE /notes/:id |
+| Categories | POST/GET /categories, GET/PATCH/DELETE /categories/:id                 |
 
-# production mode
-$ npm run start:prod
-```
+Task 1 (plain SQL against a `courses` table) lives in `task1.sql`.
+Evidence for every task is in the `screenshots/` folder.
 
-## Run tests
+## Reflection Questions
 
-```bash
-# unit tests
-$ npm run test
+**1. What problem does an ORM solve, and what is one disadvantage of using it?**
+An ORM maps database tables to classes in the programming language, so instead
+of writing SQL strings everywhere you work with objects and repositories, and
+the ORM generates the SQL, handles relations and keeps types consistent.
+A disadvantage is that the generated SQL is hidden and can be inefficient
+(for example N+1 queries), and very complex queries can be harder to express
+through an ORM than in raw SQL.
 
-# e2e tests
-$ npm run test:e2e
+**2. What is the difference between repository.create() and repository.save()?**
+`create()` only builds an entity instance in memory from a plain object — it
+runs no query and nothing is stored. `save()` actually writes to the database:
+it inserts the entity, or updates it if it already has an id, and returns the
+persisted entity. So `create()` is normally followed by `save()`.
 
-# test coverage
-$ npm run test:cov
-```
+**3. In a one-to-many relationship, which table holds the foreign key? Which decorator creates the junction table in a many-to-many relationship?**
+The foreign key lives on the "many" side: the notes table holds `authorId`
+(and `categoryId`), because many notes point back to one user/category.
+In a many-to-many relationship the junction table (here `notes_tags_tags`) is
+created by the `@JoinTable()` decorator, placed on the owning side of the
+relation.
 
-## Deployment
+**4. Why is synchronize: true dangerous in production, and what should you use instead?**
+With `synchronize: true` TypeORM silently alters the real schema to match the
+entities on every startup — renaming or removing a property can drop columns
+or tables and destroy production data, with no review and no way back.
+In production you use migrations instead: schema changes are generated as
+versioned, reviewable scripts that are applied deliberately and can be
+reverted.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
-
-```bash
-$ npx @nestjs/observe link
-```
-
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
-
-Or do it by hand:
-
-```bash
-$ npm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**5. Why should database credentials be stored in .env instead of in the source code?**
+Source code gets committed to git, where secrets stay in the history forever
+and are exposed to anyone who can see the repository. A `.env` file is kept
+out of version control (only `.env.example` with placeholders is committed),
+and each environment — a developer laptop, a server — can use its own
+credentials without any code change.
